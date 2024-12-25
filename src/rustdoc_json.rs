@@ -3,57 +3,72 @@ use std::collections::HashMap;
 
 use crate::signature_builder::{function_sig_to_string, FunctionSig};
 
-/// Rustdoc JSON のトップレベル例
+/// ----------------------------------------
+/// Rustdoc JSON のトップレベル
+/// ----------------------------------------
 #[derive(Debug, Deserialize)]
 pub struct RustDocJson {
-    #[serde(rename = "index")]
+    /// "index" フィールド: ID文字列 -> Item
     pub index: HashMap<String, Item>,
 }
 
-/// Rustdoc JSON における1つのアイテム (関数、構造体 等々)
+/// ----------------------------------------
+/// Rustdoc JSON 内の1つのアイテム
+/// (関数, 構造体, enum, など)
+/// ----------------------------------------
 #[derive(Debug, Deserialize)]
 pub struct Item {
-    /// アイテム名 (関数名など)
+    /// アイテム名 (function の場合は関数名)
     pub name: Option<String>,
-    /// アイテムの種類: function / struct / enum / ...
-    #[serde(rename = "kind")]
-    pub kind: String,
-    /// 詳細情報 (function の場合のみ `inner.function` が入っている)
-    #[serde(rename = "inner")]
+
+    /// ドキュメントコメント
+    #[serde(default)]
+    pub docs: Option<String>,
+
+    /// 詳細情報は "inner" フィールドに入る
     pub inner: ItemInner,
 }
 
-/// ItemInner は、function ならば Function 構造体
-/// (struct, enum, trait など 他のバリエーションは省略)
+/// ----------------------------------------
+/// ItemInner: functionキーがあれば関数
+/// (他にも struct, enum, trait, impl, ... がありうる)
+/// ----------------------------------------
 #[derive(Debug, Deserialize)]
-#[serde(tag = "kind", content = "function")]
-pub enum ItemInner {
-    #[serde(rename = "function")]
-    Function(Function),
+pub struct ItemInner {
+    /// "function": Option<Function> で関数かどうか判断
+    pub function: Option<Function>,
+
+    // もし struct や enum も取り込みたい場合:
+    // pub struct_: Option<StructItem>,
+    // pub enum_: Option<EnumItem>,
+    // etc.
 }
 
-/// 関数の詳細 (シグネチャなど)
+/// ----------------------------------------
+/// 関数アイテム
+/// ----------------------------------------
 #[derive(Debug, Deserialize)]
 pub struct Function {
+    /// 関数シグネチャ
     pub sig: FunctionSig,
-    // generics, header, has_body などもありうる
+    // generics, header, has_body なども
+    // ここに入っているが今回は省略
 }
 
 /// ----------------------------------------
-/// 関数シグネチャを文字列化する簡易ヘルパー
+/// (1) functionかどうかを判定し、
+/// シグネチャ文字列を生成する関数
 /// ----------------------------------------
 pub fn item_to_signature_string(item: &Item) -> Option<String> {
-    if item.kind != "function" {
-        return None;
-    }
-
+    // 関数名
     let name = item.name.as_deref().unwrap_or("unknown");
-    if let ItemInner::Function(func) = &item.inner {
-        // signature_builder.rs に定義したロジックを呼び出して
-        // Rustっぽいシグネチャ文字列を作る
-        let sig_str = function_sig_to_string(name, &func.sig);
-        Some(sig_str)
-    } else {
-        None
-    }
+
+    // functionがSomeなら関数として扱う
+    let Some(func) = &item.inner.function else {
+        return None;
+    };
+
+    // signature_builder側で文字列を作る
+    let sig_str = function_sig_to_string(name, &func.sig);
+    Some(sig_str)
 }
