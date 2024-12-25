@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "name": "foo",
+      "doc": "Example function foo. This is a doc string for demonstration."
+    },
+    {
+      "name": "bar",
+      "doc": "Example function bar. Another doc string here."
+    },
+    {
+      "name": "baz",
+      "doc": "Struct baz with interesting traits. Demonstration doc."
+    }
+  ]
+}
